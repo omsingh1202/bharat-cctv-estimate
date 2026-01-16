@@ -11,6 +11,13 @@ export interface PricingData {
     ch16: number;
     ch32: number;
   };
+  hardDisk: {
+    tb1: number;
+    tb2: number;
+    tb4: number;
+    tb6: number;
+    tb8: number;
+  };
   powerSupply: {
     ch2: number;
     ch4: number;
@@ -54,6 +61,13 @@ export const defaultPricing: PricingData = {
     ch8: 7000,
     ch16: 10000,
     ch32: 14000,
+  },
+  hardDisk: {
+    tb1: 3500,
+    tb2: 5500,
+    tb4: 9000,
+    tb6: 13000,
+    tb8: 17000,
   },
   powerSupply: {
     ch2: 800,
