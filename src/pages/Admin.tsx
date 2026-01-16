@@ -209,6 +209,18 @@ const Admin = () => {
             </div>
           </div>
 
+          {/* Hard Disk */}
+          <div className="glass-card p-6">
+            <h2 className="font-display font-semibold text-lg mb-4">Hard Disk Prices</h2>
+            <div className="space-y-3">
+              <PriceInput label="1 TB" value={pricing.hardDisk.tb1} onChange={(v) => updatePricing('hardDisk', 'tb1', v)} />
+              <PriceInput label="2 TB" value={pricing.hardDisk.tb2} onChange={(v) => updatePricing('hardDisk', 'tb2', v)} />
+              <PriceInput label="4 TB" value={pricing.hardDisk.tb4} onChange={(v) => updatePricing('hardDisk', 'tb4', v)} />
+              <PriceInput label="6 TB" value={pricing.hardDisk.tb6} onChange={(v) => updatePricing('hardDisk', 'tb6', v)} />
+              <PriceInput label="8 TB" value={pricing.hardDisk.tb8} onChange={(v) => updatePricing('hardDisk', 'tb8', v)} />
+            </div>
+          </div>
+
           {/* Power Supply */}
           <div className="glass-card p-6">
             <h2 className="font-display font-semibold text-lg mb-4">Power Supply Prices</h2>

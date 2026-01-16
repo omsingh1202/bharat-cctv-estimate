@@ -18,8 +18,9 @@ const Estimator = () => {
   const [domeCameras, setDomeCameras] = useState(0);
   const [otherCameras, setOtherCameras] = useState(0);
   
-  // DVR & Power Supply
+  // DVR, Hard Disk & Power Supply
   const [dvrChannel, setDvrChannel] = useState<string>('');
+  const [hardDisk, setHardDisk] = useState<string>('');
   const [powerChannel, setPowerChannel] = useState<string>('');
   
   // Accessories
@@ -47,6 +48,14 @@ const Estimator = () => {
     '8ch': pricing.dvr.ch8,
     '16ch': pricing.dvr.ch16,
     '32ch': pricing.dvr.ch32,
+  };
+
+  const hardDiskPrices: Record<string, number> = {
+    '1tb': pricing.hardDisk.tb1,
+    '2tb': pricing.hardDisk.tb2,
+    '4tb': pricing.hardDisk.tb4,
+    '6tb': pricing.hardDisk.tb6,
+    '8tb': pricing.hardDisk.tb8,
   };
 
   const powerPrices: Record<string, number> = {
@@ -93,6 +102,15 @@ const Estimator = () => {
         quantity: 1,
         unitPrice: dvrPrices[dvrChannel],
         total: dvrPrices[dvrChannel],
+      });
+    }
+    
+    if (hardDisk && hardDiskPrices[hardDisk]) {
+      items.push({
+        name: `Hard Disk (${hardDisk.toUpperCase()})`,
+        quantity: 1,
+        unitPrice: hardDiskPrices[hardDisk],
+        total: hardDiskPrices[hardDisk],
       });
     }
     
@@ -183,7 +201,7 @@ const Estimator = () => {
     const grandTotal = materialTotal + laborCharge + distanceCharge;
 
     return { items, materialTotal, laborCharge, distanceCharge, grandTotal };
-  }, [pricing, bulletCameras, domeCameras, otherCameras, dvrChannel, powerChannel, wireLength, bncConnectors, dcConnectors, pvcBoxes, includeHdmi, includeVga, includeMonitor, includeRack, distance, totalCameras]);
+  }, [pricing, bulletCameras, domeCameras, otherCameras, dvrChannel, hardDisk, powerChannel, wireLength, bncConnectors, dcConnectors, pvcBoxes, includeHdmi, includeVga, includeMonitor, includeRack, distance, totalCameras]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -297,13 +315,13 @@ const Estimator = () => {
               </div>
             </div>
 
-            {/* DVR & Power Supply */}
+            {/* DVR, Hard Disk & Power Supply */}
             <div className="glass-card p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Package className="w-5 h-5 text-primary" />
-                <h2 className="font-display font-semibold text-lg">DVR & Power Supply</h2>
+                <h2 className="font-display font-semibold text-lg">DVR, Hard Disk & Power Supply</h2>
               </div>
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-3 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">DVR Channels</label>
                   <select
@@ -317,6 +335,21 @@ const Estimator = () => {
                     <option value="8ch">8 Channel - {formatCurrency(pricing.dvr.ch8)}</option>
                     <option value="16ch">16 Channel - {formatCurrency(pricing.dvr.ch16)}</option>
                     <option value="32ch">32 Channel - {formatCurrency(pricing.dvr.ch32)}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Hard Disk</label>
+                  <select
+                    value={hardDisk}
+                    onChange={(e) => setHardDisk(e.target.value)}
+                    className="w-full p-3 rounded-lg bg-muted/30 border border-border/50 text-foreground"
+                  >
+                    <option value="">Select Hard Disk</option>
+                    <option value="1tb">1 TB - {formatCurrency(pricing.hardDisk.tb1)}</option>
+                    <option value="2tb">2 TB - {formatCurrency(pricing.hardDisk.tb2)}</option>
+                    <option value="4tb">4 TB - {formatCurrency(pricing.hardDisk.tb4)}</option>
+                    <option value="6tb">6 TB - {formatCurrency(pricing.hardDisk.tb6)}</option>
+                    <option value="8tb">8 TB - {formatCurrency(pricing.hardDisk.tb8)}</option>
                   </select>
                 </div>
                 <div>
