@@ -236,11 +236,42 @@ const Estimator = () => {
   };
 
   const sendToWhatsApp = () => {
+    // Validate customer details
+    const trimmedName = customerName.trim();
+    const trimmedPhone = customerPhone.trim();
+    
+    if (!trimmedName) {
+      toast({
+        title: 'Name Required',
+        description: 'Please enter your name before sending the estimate.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!trimmedPhone) {
+      toast({
+        title: 'Phone Required',
+        description: 'Please enter your phone number before sending the estimate.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!/^[0-9]{10}$/.test(trimmedPhone.replace(/[\s-]/g, ''))) {
+      toast({
+        title: 'Invalid Phone',
+        description: 'Please enter a valid 10-digit phone number.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     // Save inquiry to local storage
     addInquiry({
       type: 'estimate',
-      customerName: customerName || undefined,
-      customerPhone: customerPhone || undefined,
+      customerName: trimmedName,
+      customerPhone: trimmedPhone,
       estimateDetails: {
         items: breakdown.items,
         materialTotal: breakdown.materialTotal,
