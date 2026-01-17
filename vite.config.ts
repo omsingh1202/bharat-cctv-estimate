@@ -4,7 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  base: "/bharat-cctv-estimate/", // 👈 EXACT GitHub repo name
+  base: "/bharat-cctv-estimate/", // 👈 MUST match repo name
 
   plugins: [
     react(),
