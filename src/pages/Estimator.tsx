@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Camera, Package, Wrench, MapPin, Calculator, Download, Send, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { loadPricing, getLaborCharge, getDistanceCharge, type PricingData } from '@/lib/pricing';
+import { addInquiry } from '@/lib/inquiries';
+import { useToast } from '@/hooks/use-toast';
 
 interface EstimateItem {
   name: string;
@@ -11,6 +13,7 @@ interface EstimateItem {
 }
 
 const Estimator = () => {
+  const { toast } = useToast();
   const [pricing, setPricing] = useState<PricingData>(loadPricing());
   
   // Camera selections
@@ -227,6 +230,23 @@ const Estimator = () => {
   };
 
   const sendToWhatsApp = () => {
+    // Save inquiry to local storage
+    addInquiry({
+      type: 'estimate',
+      estimateDetails: {
+        items: breakdown.items,
+        materialTotal: breakdown.materialTotal,
+        laborCharge: breakdown.laborCharge,
+        distanceCharge: breakdown.distanceCharge,
+        grandTotal: breakdown.grandTotal,
+      },
+    });
+    
+    toast({
+      title: 'Estimate Saved',
+      description: 'Your estimate has been recorded.',
+    });
+    
     const message = generateWhatsAppMessage();
     window.open(`https://wa.me/919876543210?text=${message}`, '_blank');
   };

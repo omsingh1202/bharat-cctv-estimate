@@ -1,6 +1,8 @@
 import { Phone, Mail, MapPin, Clock, MessageCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { addInquiry } from '@/lib/inquiries';
+import { useToast } from '@/hooks/use-toast';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -8,11 +10,29 @@ const Contact = () => {
     phone: '',
     message: '',
   });
+  const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Save inquiry to local storage
+    addInquiry({
+      type: 'contact',
+      customerName: formData.name,
+      customerPhone: formData.phone,
+      message: formData.message,
+    });
+    
+    toast({
+      title: 'Inquiry Saved',
+      description: 'Your inquiry has been recorded.',
+    });
+    
     const message = `*New Inquiry from Website*\n\nName: ${formData.name}\nPhone: ${formData.phone}\nMessage: ${formData.message}`;
     window.open(`https://wa.me/919876543210?text=${encodeURIComponent(message)}`, '_blank');
+    
+    // Reset form
+    setFormData({ name: '', phone: '', message: '' });
   };
 
   const contactInfo = [
