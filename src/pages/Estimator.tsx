@@ -38,6 +38,10 @@ const Estimator = () => {
   
   // Distance
   const [distance, setDistance] = useState<string>('');
+  
+  // Customer Details
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
 
   useEffect(() => {
     setPricing(loadPricing());
@@ -216,6 +220,8 @@ const Estimator = () => {
 
   const generateWhatsAppMessage = () => {
     let message = "🎥 *CCTV Estimate from Bharat Multi Services*\n\n";
+    if (customerName) message += `*Customer:* ${customerName}\n`;
+    if (customerPhone) message += `*Phone:* ${customerPhone}\n\n`;
     message += "*Items:*\n";
     breakdown.items.forEach(item => {
       message += `• ${item.name} x${item.quantity}: ${formatCurrency(item.total)}\n`;
@@ -233,6 +239,8 @@ const Estimator = () => {
     // Save inquiry to local storage
     addInquiry({
       type: 'estimate',
+      customerName: customerName || undefined,
+      customerPhone: customerPhone || undefined,
       estimateDetails: {
         items: breakdown.items,
         materialTotal: breakdown.materialTotal,
@@ -448,6 +456,36 @@ const Estimator = () => {
                     <div className="text-xs opacity-80">{formatCurrency(opt.price)}</div>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Customer Details */}
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Send className="w-5 h-5 text-primary" />
+                <h2 className="font-display font-semibold text-lg">Your Details</h2>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Your Name</label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter your name"
+                    className="w-full p-3 rounded-lg bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="Enter your phone number"
+                    className="w-full p-3 rounded-lg bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
               </div>
             </div>
           </div>
