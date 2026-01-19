@@ -29,7 +29,7 @@ const Contact = () => {
     });
     
     const message = `*New Inquiry from Website*\n\nName: ${formData.name}\nPhone: ${formData.phone}\nMessage: ${formData.message}`;
-    window.open(`https://wa.me/919876543210?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/919422115003?text=${encodeURIComponent(message)}`, '_blank');
     
     // Reset form
     setFormData({ name: '', phone: '', message: '' });
@@ -39,8 +39,8 @@ const Contact = () => {
     {
       icon: Phone,
       title: 'Phone',
-      value: '+91 98765 43210',
-      action: 'tel:+919876543210',
+      value: '+91 9422115003',
+      action: 'tel:+919422115003',
     },
     {
       icon: Mail,
@@ -122,7 +122,7 @@ const Contact = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Send us a message on WhatsApp for quick quotes, queries, or to schedule a site visit.
               </p>
-              <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer">
+              <a href="https://wa.me/919422115003" target="_blank" rel="noopener noreferrer">
                 <Button variant="whatsapp" className="w-full">
                   <MessageCircle className="w-5 h-5" />
                   Open WhatsApp Chat

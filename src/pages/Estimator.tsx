@@ -287,7 +287,7 @@ const Estimator = () => {
     });
     
     const message = generateWhatsAppMessage();
-    window.open(`https://wa.me/919876543210?text=${message}`, '_blank');
+    window.open(`https://wa.me/919422115003?text=${message}`, '_blank');
   };
 
   const downloadPDF = () => {
@@ -303,7 +303,7 @@ const Estimator = () => {
     content += `Distance Charges: ${formatCurrency(breakdown.distanceCharge)}\n`;
     content += `\nGRAND TOTAL: ${formatCurrency(breakdown.grandTotal)}\n`;
     content += "\n=====================================\n";
-    content += "Contact: +91 98765 43210\n";
+    content += "Contact: +91 94221 15003\n";
     content += "Email: bharatmultiservicesnagpur@gmail.com";
     
     const blob = new Blob([content], { type: 'text/plain' });
