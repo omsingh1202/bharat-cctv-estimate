@@ -1,3 +1,27 @@
+/**
+ * The Estimator function component provides a complete UI for estimating the price of a CCTV installation
+ * system. It allows users to select various CCTV equipment, accessories, and specify details such as
+ * wire length, location distance, and personal contact information. The component dynamically calculates
+ * the materials cost, labor, and travel (distance) charges, then summarizes all values for the user.
+ * 
+ * Key features and their explanations:
+ * 
+ * - Uses React hooks (useState, useEffect, useMemo) for state management and computation.
+ * - Manages selections for different product options: cameras (bullet, dome, other), DVR channels,
+ *   hard disk size, power supply, wire length, and accessory checkboxes.
+ * - Allows selection of a project location distance, which affects the travel charge.
+ * - Collects customer name and phone number for inquiry submission.
+ * - The "breakdown" useMemo creates an up-to-date list summarizing every item, quantity, per-unit price,
+ *   and totals, along with overall sums for materials, labor, distance charges, and grand total.
+ * - Functions for formatting currency, generating a WhatsApp message, validating/sending the inquiry,
+ *   and enabling download of the quote as a text file.
+ * - NumberInput is a helper component that provides plus/minus inputs for numeric options.
+ * 
+ * The UI is divided into a selection form (where users pick items, accessories, location, and enter details)
+ * and an estimate summary (which shows itemized charges and a grand total, with options to WhatsApp
+ * or download the estimate).
+ */
+
 import { useState, useEffect, useMemo } from 'react';
 import { Camera, Package, Wrench, MapPin, Calculator, Download, Send, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,6 +68,7 @@ const Estimator = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
 
+  // On mount, load the pricing and migrate inquiries if needed
   useEffect(() => {
     setPricing(loadPricing());
     migrateLegacyInquiries().catch((error) => {
@@ -51,8 +76,10 @@ const Estimator = () => {
     });
   }, []);
 
+  // Calculate the total number of cameras selected
   const totalCameras = bulletCameras + domeCameras + otherCameras;
 
+  // Lookup tables for pricing per model/option
   const dvrPrices: Record<string, number> = {
     '2ch': pricing.dvr.ch2,
     '4ch': pricing.dvr.ch4,
@@ -77,6 +104,16 @@ const Estimator = () => {
     '32ch': pricing.powerSupply.ch32,
   };
 
+  /**
+   *  breakdown: 
+   *  Calculates all selected/checked items and their pricing, then computes:
+   *    - materialTotal: sum of all selected item costs
+   *    - laborCharge: calculated labor charge based on total cameras
+   *    - distanceCharge: extra charge based on site distance
+   *    - grandTotal: overall total of all the above
+   * 
+   *  The result is updated in real time whenever relevant selections change due to useMemo.
+   */
   const breakdown = useMemo(() => {
     const items: EstimateItem[] = [];
     
@@ -206,6 +243,7 @@ const Estimator = () => {
       });
     }
 
+    // Summing up all calculated prices and extra charges
     const materialTotal = items.reduce((sum, item) => sum + item.total, 0);
     const laborCharge = totalCameras > 0 ? getLaborCharge(totalCameras, pricing) : 0;
     const distanceCharge = getDistanceCharge(distance, pricing);
@@ -214,6 +252,7 @@ const Estimator = () => {
     return { items, materialTotal, laborCharge, distanceCharge, grandTotal };
   }, [pricing, bulletCameras, domeCameras, otherCameras, dvrChannel, hardDisk, powerChannel, wireLength, bncConnectors, dcConnectors, pvcBoxes, includeHdmi, includeVga, includeMonitor, includeRack, distance, totalCameras]);
 
+  // Format numbers as INR currency (no decimals)
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -222,6 +261,14 @@ const Estimator = () => {
     }).format(amount);
   };
 
+  /**
+   * generateWhatsAppMessage
+   * Returns a URL-encoded WhatsApp message comprising:
+   *  - Customer's name & phone if provided
+   *  - All selected items (with quantity and price)
+   *  - Totals for materials, labor and distance
+   *  - Grand total and a call to action.
+   */
   const generateWhatsAppMessage = () => {
     let message = "🎥 *CCTV Estimate from Bharat Multi Services*\n\n";
     if (customerName) message += `*Customer:* ${customerName}\n`;
@@ -239,11 +286,16 @@ const Estimator = () => {
     return encodeURIComponent(message);
   };
 
+  /**
+   * sendToWhatsApp
+   * Validates the user input (name and phone), saves the inquiry,
+   * notifies the user, then opens WhatsApp with a pre-filled estimate message.
+   */
   const sendToWhatsApp = async () => {
     // Validate customer details
     const trimmedName = customerName.trim();
     const trimmedPhone = customerPhone.trim();
-    
+  
     if (!trimmedName) {
       toast({
         title: 'Name Required',
@@ -252,7 +304,7 @@ const Estimator = () => {
       });
       return;
     }
-    
+  
     if (!trimmedPhone) {
       toast({
         title: 'Phone Required',
@@ -261,8 +313,9 @@ const Estimator = () => {
       });
       return;
     }
-    
-    if (!/^[0-9]{10}$/.test(trimmedPhone.replace(/[\s-]/g, ''))) {
+  
+    const phoneDigits = trimmedPhone.replace(/[\s-]/g, '');
+    if (!/^[0-9]{10}$/.test(phoneDigits)) {
       toast({
         title: 'Invalid Phone',
         description: 'Please enter a valid 10-digit phone number.',
@@ -270,16 +323,33 @@ const Estimator = () => {
       });
       return;
     }
-    
+  
     if (isSending) return;
     setIsSending(true);
-
+  
+    // 1) Open WhatsApp immediately (never block the user)
+    const message = generateWhatsAppMessage(); // already URL-encoded
+    const waUrl = `https://wa.me/919422115003?text=${message}`;
+    window.open(waUrl, '_blank');
+  
+    // 2) Safety timeout so UI never stays stuck on "Saving..."
+    const timeoutId = window.setTimeout(() => {
+      setIsSending(false);
+      toast({
+        title: 'Taking longer than expected',
+        description: 'WhatsApp opened. Saving is taking time—please try again later if needed.',
+      });
+    }, 5000);
+  
     try {
-      const selectedProduct = totalCameras > 0 ? `${totalCameras} camera setup` : 'Custom CCTV estimate';
+      const selectedProduct =
+        totalCameras > 0 ? `${totalCameras} camera setup` : 'Custom CCTV estimate';
+  
+      // Save enquiry in background (but still try)
       await addInquiry({
         type: 'estimate',
         customerName: trimmedName,
-        customerPhone: trimmedPhone,
+        customerPhone: phoneDigits,
         selectedProduct,
         estimateDetails: {
           items: breakdown.items,
@@ -289,26 +359,29 @@ const Estimator = () => {
           grandTotal: breakdown.grandTotal,
         },
       });
-      
+  
       toast({
         title: 'Estimate Saved',
         description: 'Your estimate has been recorded.',
       });
-      
-      const message = generateWhatsAppMessage();
-      window.open(`https://wa.me/919422115003?text=${message}`, '_blank');
     } catch (error) {
+      console.error('addInquiry failed:', error);
       toast({
         title: 'Could not save estimate',
-        description: 'Please check your connection and try again.',
+        description: 'WhatsApp opened, but saving failed. Please try again later.',
         variant: 'destructive',
       });
-      console.error(error);
     } finally {
+      window.clearTimeout(timeoutId);
       setIsSending(false);
     }
   };
-
+  
+  /**
+   * downloadPDF
+   * Lets users download a plain text version of the full estimate,
+   * including all item breakdown, totals, and business contact info.
+   */
   const downloadPDF = () => {
     // Create a simple text-based estimate for now
     let content = "CCTV ESTIMATE - BHARAT MULTI SERVICES\n";
@@ -334,6 +407,11 @@ const Estimator = () => {
     URL.revokeObjectURL(url);
   };
 
+  /**
+   * NumberInput Component
+   * Renders a label, decrement/increment buttons, and value display
+   * for number input fields throughout the estimator UI.
+   */
   const NumberInput = ({ 
     value, 
     onChange, 
@@ -365,6 +443,7 @@ const Estimator = () => {
     </div>
   );
 
+  // The main component UI, split into selection area and summary area
   return (
     <div className="min-h-screen pt-20 pb-12">
       <div className="container mx-auto px-4">
@@ -377,6 +456,7 @@ const Estimator = () => {
           </p>
         </div>
 
+        {/* Selection grid and summary area */}
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Selection Panel */}
           <div className="lg:col-span-2 space-y-6">
