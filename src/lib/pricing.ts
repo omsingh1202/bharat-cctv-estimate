@@ -132,3 +132,135 @@ export const getDistanceCharge = (distance: string, pricing: PricingData): numbe
     default: return 0;
   }
 };
+
+const pricingFieldPaths = {
+  'cameras.bullet': 'cameras.bullet',
+  'cameras.dome': 'cameras.dome',
+  'cameras.other': 'cameras.other',
+  'dvr.ch2': 'dvr.ch2',
+  'dvr.ch4': 'dvr.ch4',
+  'dvr.ch8': 'dvr.ch8',
+  'dvr.ch16': 'dvr.ch16',
+  'dvr.ch32': 'dvr.ch32',
+  'hardDisk.tb1': 'hardDisk.tb1',
+  'hardDisk.tb2': 'hardDisk.tb2',
+  'hardDisk.tb4': 'hardDisk.tb4',
+  'hardDisk.tb6': 'hardDisk.tb6',
+  'hardDisk.tb8': 'hardDisk.tb8',
+  'powerSupply.ch2': 'powerSupply.ch2',
+  'powerSupply.ch4': 'powerSupply.ch4',
+  'powerSupply.ch8': 'powerSupply.ch8',
+  'powerSupply.ch16': 'powerSupply.ch16',
+  'powerSupply.ch32': 'powerSupply.ch32',
+  'accessories.wirePerMeter': 'accessories.wirePerMeter',
+  'accessories.bncConnector': 'accessories.bncConnector',
+  'accessories.dcConnector': 'accessories.dcConnector',
+  'accessories.pvcBox': 'accessories.pvcBox',
+  'accessories.hdmiCable': 'accessories.hdmiCable',
+  'accessories.vgaCable': 'accessories.vgaCable',
+  'accessories.monitor': 'accessories.monitor',
+  'accessories.rack': 'accessories.rack',
+  'labor.cam2': 'labor.cam2',
+  'labor.cam4': 'labor.cam4',
+  'labor.cam8': 'labor.cam8',
+  'labor.cam16': 'labor.cam16',
+  'labor.cam32': 'labor.cam32',
+  'distance.km20': 'distance.km20',
+  'distance.km50': 'distance.km50',
+  'distance.km100': 'distance.km100',
+} as const;
+
+export type PricingId = keyof typeof pricingFieldPaths;
+
+export const pricingToMap = (pricing: PricingData): Record<PricingId, number> => ({
+  'cameras.bullet': pricing.cameras.bullet,
+  'cameras.dome': pricing.cameras.dome,
+  'cameras.other': pricing.cameras.other,
+  'dvr.ch2': pricing.dvr.ch2,
+  'dvr.ch4': pricing.dvr.ch4,
+  'dvr.ch8': pricing.dvr.ch8,
+  'dvr.ch16': pricing.dvr.ch16,
+  'dvr.ch32': pricing.dvr.ch32,
+  'hardDisk.tb1': pricing.hardDisk.tb1,
+  'hardDisk.tb2': pricing.hardDisk.tb2,
+  'hardDisk.tb4': pricing.hardDisk.tb4,
+  'hardDisk.tb6': pricing.hardDisk.tb6,
+  'hardDisk.tb8': pricing.hardDisk.tb8,
+  'powerSupply.ch2': pricing.powerSupply.ch2,
+  'powerSupply.ch4': pricing.powerSupply.ch4,
+  'powerSupply.ch8': pricing.powerSupply.ch8,
+  'powerSupply.ch16': pricing.powerSupply.ch16,
+  'powerSupply.ch32': pricing.powerSupply.ch32,
+  'accessories.wirePerMeter': pricing.accessories.wirePerMeter,
+  'accessories.bncConnector': pricing.accessories.bncConnector,
+  'accessories.dcConnector': pricing.accessories.dcConnector,
+  'accessories.pvcBox': pricing.accessories.pvcBox,
+  'accessories.hdmiCable': pricing.accessories.hdmiCable,
+  'accessories.vgaCable': pricing.accessories.vgaCable,
+  'accessories.monitor': pricing.accessories.monitor,
+  'accessories.rack': pricing.accessories.rack,
+  'labor.cam2': pricing.labor.cam2,
+  'labor.cam4': pricing.labor.cam4,
+  'labor.cam8': pricing.labor.cam8,
+  'labor.cam16': pricing.labor.cam16,
+  'labor.cam32': pricing.labor.cam32,
+  'distance.km20': pricing.distance.km20,
+  'distance.km50': pricing.distance.km50,
+  'distance.km100': pricing.distance.km100,
+});
+
+const getFromMap = (map: Partial<Record<PricingId, number>>, id: PricingId, fallback: number) => {
+  const value = map[id];
+  return typeof value === 'number' && !Number.isNaN(value) ? value : fallback;
+};
+
+export const mapToPricing = (map: Partial<Record<PricingId, number>>): PricingData => ({
+  cameras: {
+    bullet: getFromMap(map, 'cameras.bullet', defaultPricing.cameras.bullet),
+    dome: getFromMap(map, 'cameras.dome', defaultPricing.cameras.dome),
+    other: getFromMap(map, 'cameras.other', defaultPricing.cameras.other),
+  },
+  dvr: {
+    ch2: getFromMap(map, 'dvr.ch2', defaultPricing.dvr.ch2),
+    ch4: getFromMap(map, 'dvr.ch4', defaultPricing.dvr.ch4),
+    ch8: getFromMap(map, 'dvr.ch8', defaultPricing.dvr.ch8),
+    ch16: getFromMap(map, 'dvr.ch16', defaultPricing.dvr.ch16),
+    ch32: getFromMap(map, 'dvr.ch32', defaultPricing.dvr.ch32),
+  },
+  hardDisk: {
+    tb1: getFromMap(map, 'hardDisk.tb1', defaultPricing.hardDisk.tb1),
+    tb2: getFromMap(map, 'hardDisk.tb2', defaultPricing.hardDisk.tb2),
+    tb4: getFromMap(map, 'hardDisk.tb4', defaultPricing.hardDisk.tb4),
+    tb6: getFromMap(map, 'hardDisk.tb6', defaultPricing.hardDisk.tb6),
+    tb8: getFromMap(map, 'hardDisk.tb8', defaultPricing.hardDisk.tb8),
+  },
+  powerSupply: {
+    ch2: getFromMap(map, 'powerSupply.ch2', defaultPricing.powerSupply.ch2),
+    ch4: getFromMap(map, 'powerSupply.ch4', defaultPricing.powerSupply.ch4),
+    ch8: getFromMap(map, 'powerSupply.ch8', defaultPricing.powerSupply.ch8),
+    ch16: getFromMap(map, 'powerSupply.ch16', defaultPricing.powerSupply.ch16),
+    ch32: getFromMap(map, 'powerSupply.ch32', defaultPricing.powerSupply.ch32),
+  },
+  accessories: {
+    wirePerMeter: getFromMap(map, 'accessories.wirePerMeter', defaultPricing.accessories.wirePerMeter),
+    bncConnector: getFromMap(map, 'accessories.bncConnector', defaultPricing.accessories.bncConnector),
+    dcConnector: getFromMap(map, 'accessories.dcConnector', defaultPricing.accessories.dcConnector),
+    pvcBox: getFromMap(map, 'accessories.pvcBox', defaultPricing.accessories.pvcBox),
+    hdmiCable: getFromMap(map, 'accessories.hdmiCable', defaultPricing.accessories.hdmiCable),
+    vgaCable: getFromMap(map, 'accessories.vgaCable', defaultPricing.accessories.vgaCable),
+    monitor: getFromMap(map, 'accessories.monitor', defaultPricing.accessories.monitor),
+    rack: getFromMap(map, 'accessories.rack', defaultPricing.accessories.rack),
+  },
+  labor: {
+    cam2: getFromMap(map, 'labor.cam2', defaultPricing.labor.cam2),
+    cam4: getFromMap(map, 'labor.cam4', defaultPricing.labor.cam4),
+    cam8: getFromMap(map, 'labor.cam8', defaultPricing.labor.cam8),
+    cam16: getFromMap(map, 'labor.cam16', defaultPricing.labor.cam16),
+    cam32: getFromMap(map, 'labor.cam32', defaultPricing.labor.cam32),
+  },
+  distance: {
+    km20: getFromMap(map, 'distance.km20', defaultPricing.distance.km20),
+    km50: getFromMap(map, 'distance.km50', defaultPricing.distance.km50),
+    km100: getFromMap(map, 'distance.km100', defaultPricing.distance.km100),
+  },
+});

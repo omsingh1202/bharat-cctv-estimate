@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Camera, Package, Wrench, MapPin, Calculator, Download, Send, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { loadPricing, getLaborCharge, getDistanceCharge, type PricingData } from '@/lib/pricing';
-import { addInquiry } from '@/lib/inquiries';
+import { addInquiry, migrateLegacyInquiries } from '@/lib/inquiries';
 import { useToast } from '@/hooks/use-toast';
 
 interface EstimateItem {
@@ -15,6 +15,7 @@ interface EstimateItem {
 const Estimator = () => {
   const { toast } = useToast();
   const [pricing, setPricing] = useState<PricingData>(loadPricing());
+  const [isSending, setIsSending] = useState(false);
   
   // Camera selections
   const [bulletCameras, setBulletCameras] = useState(0);
@@ -45,6 +46,9 @@ const Estimator = () => {
 
   useEffect(() => {
     setPricing(loadPricing());
+    migrateLegacyInquiries().catch((error) => {
+      console.error('Legacy inquiry migration failed', error);
+    });
   }, []);
 
   const totalCameras = bulletCameras + domeCameras + otherCameras;
@@ -235,7 +239,7 @@ const Estimator = () => {
     return encodeURIComponent(message);
   };
 
-  const sendToWhatsApp = () => {
+  const sendToWhatsApp = async () => {
     // Validate customer details
     const trimmedName = customerName.trim();
     const trimmedPhone = customerPhone.trim();
@@ -267,27 +271,42 @@ const Estimator = () => {
       return;
     }
     
-    // Save inquiry to local storage
-    addInquiry({
-      type: 'estimate',
-      customerName: trimmedName,
-      customerPhone: trimmedPhone,
-      estimateDetails: {
-        items: breakdown.items,
-        materialTotal: breakdown.materialTotal,
-        laborCharge: breakdown.laborCharge,
-        distanceCharge: breakdown.distanceCharge,
-        grandTotal: breakdown.grandTotal,
-      },
-    });
-    
-    toast({
-      title: 'Estimate Saved',
-      description: 'Your estimate has been recorded.',
-    });
-    
-    const message = generateWhatsAppMessage();
-    window.open(`https://wa.me/919422115003?text=${message}`, '_blank');
+    if (isSending) return;
+    setIsSending(true);
+
+    try {
+      const selectedProduct = totalCameras > 0 ? `${totalCameras} camera setup` : 'Custom CCTV estimate';
+      await addInquiry({
+        type: 'estimate',
+        customerName: trimmedName,
+        customerPhone: trimmedPhone,
+        selectedProduct,
+        estimateDetails: {
+          items: breakdown.items,
+          materialTotal: breakdown.materialTotal,
+          laborCharge: breakdown.laborCharge,
+          distanceCharge: breakdown.distanceCharge,
+          grandTotal: breakdown.grandTotal,
+        },
+      });
+      
+      toast({
+        title: 'Estimate Saved',
+        description: 'Your estimate has been recorded.',
+      });
+      
+      const message = generateWhatsAppMessage();
+      window.open(`https://wa.me/919422115003?text=${message}`, '_blank');
+    } catch (error) {
+      toast({
+        title: 'Could not save estimate',
+        description: 'Please check your connection and try again.',
+        variant: 'destructive',
+      });
+      console.error(error);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const downloadPDF = () => {
@@ -565,9 +584,9 @@ const Estimator = () => {
                   </div>
 
                   <div className="space-y-3 mt-4">
-                    <Button variant="whatsapp" className="w-full" onClick={sendToWhatsApp}>
+                    <Button variant="whatsapp" className="w-full" onClick={sendToWhatsApp} disabled={isSending}>
                       <Send className="w-4 h-4" />
-                      Send via WhatsApp
+                      {isSending ? 'Saving...' : 'Send via WhatsApp'}
                     </Button>
                     <Button variant="outline" className="w-full" onClick={downloadPDF}>
                       <Download className="w-4 h-4" />

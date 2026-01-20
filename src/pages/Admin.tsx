@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Shield, Save, LogOut, Eye, EyeOff, Trash2, Clock, CheckCircle, Loader2, FileText, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { loadPricing, savePricing, defaultPricing, type PricingData } from '@/lib/pricing';
-import { loadInquiries, updateInquiryStatus, deleteInquiry, type Inquiry, type InquiryStatus } from '@/lib/inquiries';
+import { loadPricing, savePricing, defaultPricing, pricingToMap, mapToPricing, type PricingId } from '@/lib/pricing';
+import { subscribeToInquiries, updateInquiryStatus, deleteInquiry, migrateLegacyInquiries, type Inquiry, type InquiryStatus } from '@/lib/inquiries';
 import { useToast } from '@/hooks/use-toast';
 
 const Admin = () => {
@@ -10,8 +10,10 @@ const Admin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [pricing, setPricing] = useState<PricingData>(defaultPricing);
+  const [pricesById, setPricesById] = useState<Record<PricingId, number>>(pricingToMap(defaultPricing));
+  const pricing = useMemo(() => mapToPricing(pricesById), [pricesById]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [inquiriesLoading, setInquiriesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'pricing' | 'inquiries'>('inquiries');
   const { toast } = useToast();
 
@@ -19,14 +21,28 @@ const Admin = () => {
     const loggedIn = localStorage.getItem('bms_admin_logged_in');
     if (loggedIn === 'true') {
       setIsLoggedIn(true);
-      setPricing(loadPricing());
-      setInquiries(loadInquiries());
     }
   }, []);
 
-  const refreshInquiries = () => {
-    setInquiries(loadInquiries());
-  };
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    setPricesById(pricingToMap(loadPricing()));
+    setInquiriesLoading(true);
+
+    const unsubscribe = subscribeToInquiries((items) => {
+      setInquiries(items);
+      setInquiriesLoading(false);
+    });
+
+    migrateLegacyInquiries().catch((error) => {
+      console.error('Failed to migrate legacy inquiries', error);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isLoggedIn]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +50,7 @@ const Admin = () => {
     if (email === 'bharatmultiservicesnagpur@gmail.com' && password === 'Bms@1234') {
       setIsLoggedIn(true);
       localStorage.setItem('bms_admin_logged_in', 'true');
-      setPricing(loadPricing());
-      setInquiries(loadInquiries());
+      setPricesById(pricingToMap(loadPricing()));
       toast({
         title: 'Login Successful',
         description: 'Welcome to the admin panel.',
@@ -54,23 +69,22 @@ const Admin = () => {
     localStorage.removeItem('bms_admin_logged_in');
     setEmail('');
     setPassword('');
+    setInquiries([]);
+    setPricesById(pricingToMap(defaultPricing));
   };
 
   const handleSave = () => {
-    savePricing(pricing);
+    savePricing(mapToPricing(pricesById));
     toast({
       title: 'Prices Updated',
       description: 'All pricing changes have been saved.',
     });
   };
 
-  const updatePricing = (category: keyof PricingData, key: string, value: number) => {
-    setPricing(prev => ({
+  const updatePricing = (id: PricingId, value: number) => {
+    setPricesById((prev) => ({
       ...prev,
-      [category]: {
-        ...prev[category],
-        [key]: value,
-      },
+      [id]: value,
     }));
   };
 
@@ -161,22 +175,38 @@ const Admin = () => {
     );
   }
 
-  const handleStatusChange = (id: string, status: InquiryStatus) => {
-    updateInquiryStatus(id, status);
-    refreshInquiries();
-    toast({
-      title: 'Status Updated',
-      description: `Project marked as ${status.replace('_', ' ')}.`,
-    });
+  const handleStatusChange = async (id: string, status: InquiryStatus) => {
+    try {
+      await updateInquiryStatus(id, status);
+      toast({
+        title: 'Status Updated',
+        description: `Project marked as ${status.replace('_', ' ')}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Update Failed',
+        description: 'Could not update inquiry status. Please try again.',
+        variant: 'destructive',
+      });
+      console.error(error);
+    }
   };
 
-  const handleDeleteInquiry = (id: string) => {
-    deleteInquiry(id);
-    refreshInquiries();
-    toast({
-      title: 'Inquiry Deleted',
-      description: 'The inquiry has been removed.',
-    });
+  const handleDeleteInquiry = async (id: string) => {
+    try {
+      await deleteInquiry(id);
+      toast({
+        title: 'Inquiry Deleted',
+        description: 'The inquiry has been removed.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Delete Failed',
+        description: 'Could not delete inquiry. Please try again.',
+        variant: 'destructive',
+      });
+      console.error(error);
+    }
   };
 
   const getStatusIcon = (status: InquiryStatus) => {
@@ -257,7 +287,12 @@ const Admin = () => {
 
         {activeTab === 'inquiries' && (
           <div className="space-y-4">
-            {inquiries.length === 0 ? (
+            {inquiriesLoading ? (
+              <div className="glass-card p-12 text-center">
+                <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading inquiries...</p>
+              </div>
+            ) : inquiries.length === 0 ? (
               <div className="glass-card p-12 text-center">
                 <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-display font-semibold text-lg mb-2">No Inquiries Yet</h3>
@@ -367,20 +402,20 @@ const Admin = () => {
             <div className="glass-card p-6">
               <h2 className="font-display font-semibold text-lg mb-4">Camera Prices</h2>
               <div className="space-y-3">
-                <PriceInput 
-                  label="Bullet Camera (CP Plus)" 
-                  value={pricing.cameras.bullet} 
-                  onChange={(v) => updatePricing('cameras', 'bullet', v)} 
+                <PriceInput
+                  label="Bullet Camera (CP Plus)"
+                  value={pricing.cameras.bullet}
+                  onChange={(v) => updatePricing('cameras.bullet', v)}
                 />
-                <PriceInput 
-                  label="Dome Camera" 
-                  value={pricing.cameras.dome} 
-                  onChange={(v) => updatePricing('cameras', 'dome', v)} 
+                <PriceInput
+                  label="Dome Camera"
+                  value={pricing.cameras.dome}
+                  onChange={(v) => updatePricing('cameras.dome', v)}
                 />
-                <PriceInput 
-                  label="Other CCTV Camera" 
-                  value={pricing.cameras.other} 
-                  onChange={(v) => updatePricing('cameras', 'other', v)} 
+                <PriceInput
+                  label="Other CCTV Camera"
+                  value={pricing.cameras.other}
+                  onChange={(v) => updatePricing('cameras.other', v)}
                 />
               </div>
             </div>
@@ -389,11 +424,11 @@ const Admin = () => {
             <div className="glass-card p-6">
               <h2 className="font-display font-semibold text-lg mb-4">DVR Prices</h2>
               <div className="space-y-3">
-                <PriceInput label="2 Channel" value={pricing.dvr.ch2} onChange={(v) => updatePricing('dvr', 'ch2', v)} />
-                <PriceInput label="4 Channel" value={pricing.dvr.ch4} onChange={(v) => updatePricing('dvr', 'ch4', v)} />
-                <PriceInput label="8 Channel" value={pricing.dvr.ch8} onChange={(v) => updatePricing('dvr', 'ch8', v)} />
-                <PriceInput label="16 Channel" value={pricing.dvr.ch16} onChange={(v) => updatePricing('dvr', 'ch16', v)} />
-                <PriceInput label="32 Channel" value={pricing.dvr.ch32} onChange={(v) => updatePricing('dvr', 'ch32', v)} />
+                <PriceInput label="2 Channel" value={pricing.dvr.ch2} onChange={(v) => updatePricing('dvr.ch2', v)} />
+                <PriceInput label="4 Channel" value={pricing.dvr.ch4} onChange={(v) => updatePricing('dvr.ch4', v)} />
+                <PriceInput label="8 Channel" value={pricing.dvr.ch8} onChange={(v) => updatePricing('dvr.ch8', v)} />
+                <PriceInput label="16 Channel" value={pricing.dvr.ch16} onChange={(v) => updatePricing('dvr.ch16', v)} />
+                <PriceInput label="32 Channel" value={pricing.dvr.ch32} onChange={(v) => updatePricing('dvr.ch32', v)} />
               </div>
             </div>
 
@@ -401,11 +436,11 @@ const Admin = () => {
             <div className="glass-card p-6">
               <h2 className="font-display font-semibold text-lg mb-4">Hard Disk Prices</h2>
               <div className="space-y-3">
-                <PriceInput label="1 TB" value={pricing.hardDisk.tb1} onChange={(v) => updatePricing('hardDisk', 'tb1', v)} />
-                <PriceInput label="2 TB" value={pricing.hardDisk.tb2} onChange={(v) => updatePricing('hardDisk', 'tb2', v)} />
-                <PriceInput label="4 TB" value={pricing.hardDisk.tb4} onChange={(v) => updatePricing('hardDisk', 'tb4', v)} />
-                <PriceInput label="6 TB" value={pricing.hardDisk.tb6} onChange={(v) => updatePricing('hardDisk', 'tb6', v)} />
-                <PriceInput label="8 TB" value={pricing.hardDisk.tb8} onChange={(v) => updatePricing('hardDisk', 'tb8', v)} />
+                <PriceInput label="1 TB" value={pricing.hardDisk.tb1} onChange={(v) => updatePricing('hardDisk.tb1', v)} />
+                <PriceInput label="2 TB" value={pricing.hardDisk.tb2} onChange={(v) => updatePricing('hardDisk.tb2', v)} />
+                <PriceInput label="4 TB" value={pricing.hardDisk.tb4} onChange={(v) => updatePricing('hardDisk.tb4', v)} />
+                <PriceInput label="6 TB" value={pricing.hardDisk.tb6} onChange={(v) => updatePricing('hardDisk.tb6', v)} />
+                <PriceInput label="8 TB" value={pricing.hardDisk.tb8} onChange={(v) => updatePricing('hardDisk.tb8', v)} />
               </div>
             </div>
 
@@ -413,11 +448,11 @@ const Admin = () => {
             <div className="glass-card p-6">
               <h2 className="font-display font-semibold text-lg mb-4">Power Supply Prices</h2>
               <div className="space-y-3">
-                <PriceInput label="2 Channel" value={pricing.powerSupply.ch2} onChange={(v) => updatePricing('powerSupply', 'ch2', v)} />
-                <PriceInput label="4 Channel" value={pricing.powerSupply.ch4} onChange={(v) => updatePricing('powerSupply', 'ch4', v)} />
-                <PriceInput label="8 Channel" value={pricing.powerSupply.ch8} onChange={(v) => updatePricing('powerSupply', 'ch8', v)} />
-                <PriceInput label="16 Channel" value={pricing.powerSupply.ch16} onChange={(v) => updatePricing('powerSupply', 'ch16', v)} />
-                <PriceInput label="32 Channel" value={pricing.powerSupply.ch32} onChange={(v) => updatePricing('powerSupply', 'ch32', v)} />
+                <PriceInput label="2 Channel" value={pricing.powerSupply.ch2} onChange={(v) => updatePricing('powerSupply.ch2', v)} />
+                <PriceInput label="4 Channel" value={pricing.powerSupply.ch4} onChange={(v) => updatePricing('powerSupply.ch4', v)} />
+                <PriceInput label="8 Channel" value={pricing.powerSupply.ch8} onChange={(v) => updatePricing('powerSupply.ch8', v)} />
+                <PriceInput label="16 Channel" value={pricing.powerSupply.ch16} onChange={(v) => updatePricing('powerSupply.ch16', v)} />
+                <PriceInput label="32 Channel" value={pricing.powerSupply.ch32} onChange={(v) => updatePricing('powerSupply.ch32', v)} />
               </div>
             </div>
 
@@ -425,14 +460,14 @@ const Admin = () => {
             <div className="glass-card p-6">
               <h2 className="font-display font-semibold text-lg mb-4">Accessories Prices</h2>
               <div className="space-y-3">
-                <PriceInput label="Wire (per meter)" value={pricing.accessories.wirePerMeter} onChange={(v) => updatePricing('accessories', 'wirePerMeter', v)} />
-                <PriceInput label="BNC Connector" value={pricing.accessories.bncConnector} onChange={(v) => updatePricing('accessories', 'bncConnector', v)} />
-                <PriceInput label="DC Connector" value={pricing.accessories.dcConnector} onChange={(v) => updatePricing('accessories', 'dcConnector', v)} />
-                <PriceInput label="PVC Box" value={pricing.accessories.pvcBox} onChange={(v) => updatePricing('accessories', 'pvcBox', v)} />
-                <PriceInput label="HDMI Cable" value={pricing.accessories.hdmiCable} onChange={(v) => updatePricing('accessories', 'hdmiCable', v)} />
-                <PriceInput label="VGA Cable" value={pricing.accessories.vgaCable} onChange={(v) => updatePricing('accessories', 'vgaCable', v)} />
-                <PriceInput label="Monitor" value={pricing.accessories.monitor} onChange={(v) => updatePricing('accessories', 'monitor', v)} />
-                <PriceInput label="Rack / Cabinet" value={pricing.accessories.rack} onChange={(v) => updatePricing('accessories', 'rack', v)} />
+                <PriceInput label="Wire (per meter)" value={pricing.accessories.wirePerMeter} onChange={(v) => updatePricing('accessories.wirePerMeter', v)} />
+                <PriceInput label="BNC Connector" value={pricing.accessories.bncConnector} onChange={(v) => updatePricing('accessories.bncConnector', v)} />
+                <PriceInput label="DC Connector" value={pricing.accessories.dcConnector} onChange={(v) => updatePricing('accessories.dcConnector', v)} />
+                <PriceInput label="PVC Box" value={pricing.accessories.pvcBox} onChange={(v) => updatePricing('accessories.pvcBox', v)} />
+                <PriceInput label="HDMI Cable" value={pricing.accessories.hdmiCable} onChange={(v) => updatePricing('accessories.hdmiCable', v)} />
+                <PriceInput label="VGA Cable" value={pricing.accessories.vgaCable} onChange={(v) => updatePricing('accessories.vgaCable', v)} />
+                <PriceInput label="Monitor" value={pricing.accessories.monitor} onChange={(v) => updatePricing('accessories.monitor', v)} />
+                <PriceInput label="Rack / Cabinet" value={pricing.accessories.rack} onChange={(v) => updatePricing('accessories.rack', v)} />
               </div>
             </div>
 
@@ -440,11 +475,11 @@ const Admin = () => {
             <div className="glass-card p-6">
               <h2 className="font-display font-semibold text-lg mb-4">Labor Charges</h2>
               <div className="space-y-3">
-                <PriceInput label="2 Cameras" value={pricing.labor.cam2} onChange={(v) => updatePricing('labor', 'cam2', v)} />
-                <PriceInput label="4 Cameras" value={pricing.labor.cam4} onChange={(v) => updatePricing('labor', 'cam4', v)} />
-                <PriceInput label="8 Cameras" value={pricing.labor.cam8} onChange={(v) => updatePricing('labor', 'cam8', v)} />
-                <PriceInput label="16 Cameras" value={pricing.labor.cam16} onChange={(v) => updatePricing('labor', 'cam16', v)} />
-                <PriceInput label="32 Cameras" value={pricing.labor.cam32} onChange={(v) => updatePricing('labor', 'cam32', v)} />
+                <PriceInput label="2 Cameras" value={pricing.labor.cam2} onChange={(v) => updatePricing('labor.cam2', v)} />
+                <PriceInput label="4 Cameras" value={pricing.labor.cam4} onChange={(v) => updatePricing('labor.cam4', v)} />
+                <PriceInput label="8 Cameras" value={pricing.labor.cam8} onChange={(v) => updatePricing('labor.cam8', v)} />
+                <PriceInput label="16 Cameras" value={pricing.labor.cam16} onChange={(v) => updatePricing('labor.cam16', v)} />
+                <PriceInput label="32 Cameras" value={pricing.labor.cam32} onChange={(v) => updatePricing('labor.cam32', v)} />
               </div>
             </div>
 
@@ -452,9 +487,9 @@ const Admin = () => {
             <div className="glass-card p-6">
               <h2 className="font-display font-semibold text-lg mb-4">Distance Charges</h2>
               <div className="space-y-3">
-                <PriceInput label="Up to 20 km" value={pricing.distance.km20} onChange={(v) => updatePricing('distance', 'km20', v)} />
-                <PriceInput label="Up to 50 km" value={pricing.distance.km50} onChange={(v) => updatePricing('distance', 'km50', v)} />
-                <PriceInput label="Up to 100 km" value={pricing.distance.km100} onChange={(v) => updatePricing('distance', 'km100', v)} />
+                <PriceInput label="Up to 20 km" value={pricing.distance.km20} onChange={(v) => updatePricing('distance.km20', v)} />
+                <PriceInput label="Up to 50 km" value={pricing.distance.km50} onChange={(v) => updatePricing('distance.km50', v)} />
+                <PriceInput label="Up to 100 km" value={pricing.distance.km100} onChange={(v) => updatePricing('distance.km100', v)} />
               </div>
             </div>
           </div>

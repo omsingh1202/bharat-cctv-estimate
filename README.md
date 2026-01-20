@@ -71,3 +71,27 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Firebase setup for enquiries
+
+1. Create a Firebase project and enable Firestore (Start in production mode).
+2. Add a Web app to obtain config keys.
+3. Add these variables to a `.env` file in the project root:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+4. Firestore collection: `enquiries`. Security rules example for testing:
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /enquiries/{docId} {
+         allow read, write: if true; // tighten before production
+       }
+     }
+   }
+   ```
+5. Deploy as usual (works on GitHub Pages because Firestore is client-only).

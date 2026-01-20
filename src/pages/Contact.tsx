@@ -1,7 +1,7 @@
 import { Phone, Mail, MapPin, Clock, MessageCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
-import { addInquiry } from '@/lib/inquiries';
+import { useEffect, useState } from 'react';
+import { addInquiry, migrateLegacyInquiries } from '@/lib/inquiries';
 import { useToast } from '@/hooks/use-toast';
 
 const Contact = () => {
@@ -10,29 +10,50 @@ const Contact = () => {
     phone: '',
     message: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    migrateLegacyInquiries().catch((error) => {
+      console.error('Legacy inquiry migration failed', error);
+    });
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Save inquiry to local storage
-    addInquiry({
-      type: 'contact',
-      customerName: formData.name,
-      customerPhone: formData.phone,
-      message: formData.message,
-    });
-    
-    toast({
-      title: 'Inquiry Saved',
-      description: 'Your inquiry has been recorded.',
-    });
-    
-    const message = `*New Inquiry from Website*\n\nName: ${formData.name}\nPhone: ${formData.phone}\nMessage: ${formData.message}`;
-    window.open(`https://wa.me/919422115003?text=${encodeURIComponent(message)}`, '_blank');
-    
-    // Reset form
-    setFormData({ name: '', phone: '', message: '' });
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      await addInquiry({
+        type: 'contact',
+        customerName: formData.name,
+        customerPhone: formData.phone,
+        message: formData.message,
+        selectedProduct: 'Contact form enquiry',
+      });
+      
+      toast({
+        title: 'Inquiry Saved',
+        description: 'Your inquiry has been recorded.',
+      });
+      
+      const message = `*New Inquiry from Website*\n\nName: ${formData.name}\nPhone: ${formData.phone}\nMessage: ${formData.message}`;
+      window.open(`https://wa.me/919422115003?text=${encodeURIComponent(message)}`, '_blank');
+      
+      // Reset form
+      setFormData({ name: '', phone: '', message: '' });
+    } catch (error) {
+      toast({
+        title: 'Could not send inquiry',
+        description: 'Please check your connection and try again.',
+        variant: 'destructive',
+      });
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const contactInfo = [
@@ -168,9 +189,9 @@ const Contact = () => {
                   required
                 />
               </div>
-              <Button type="submit" variant="hero" className="w-full">
+              <Button type="submit" variant="hero" className="w-full" disabled={isSubmitting}>
                 <Send className="w-5 h-5" />
-                Send via WhatsApp
+                {isSubmitting ? 'Saving...' : 'Send via WhatsApp'}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
                 This will open WhatsApp with your message ready to send.
